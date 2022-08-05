@@ -11,11 +11,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'build')));
 
 app.post("/complete", async (req, res) => {
-
+    const body = req.body;
+    console.log(body);
     // read message and send to websocket
     // todo verify signature
 /*
-    const body = req.body
+
     const s3Object = body['Records'][0]['s3']
     const objectKey = s3Object['object']['key']
     const url = await s3.getObjectUrl(objectKey, "image.png");
