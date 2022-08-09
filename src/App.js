@@ -18,7 +18,6 @@ class App extends React.Component {
         super(props);
         this.state = {
             accounts: undefined,
-            imageName: "",
             imagePhrase: "",
             imageKey: "",
             imageStatus: "complete",
@@ -54,7 +53,7 @@ class App extends React.Component {
     }
 
     async submitJob() {
-        const { accounts, imageName, imagePhrase } = this.state;
+        const { accounts, imagePhrase } = this.state;
 
         if (!accounts || accounts.length === 0) {
             return;
@@ -70,7 +69,7 @@ class App extends React.Component {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 address: accounts[0],
-                imageName: imageName,
+                imageName: accounts[0] + "_" + Date.now().toString(),
                 imagePhrase: imagePhrase,
             }),
         }).then(response => {
@@ -86,10 +85,6 @@ class App extends React.Component {
         this.setState({
             accounts : accounts
         })
-    }
-
-    handleNameChange(event) {
-        this.setState({ imageName: event.target.value });
     }
 
     handlePhraseChange(event) {
@@ -122,15 +117,6 @@ class App extends React.Component {
                                 phrase. To use this service, enter an image name and a phrase
                                 for the ArtKey AI artist.
                             </Typography>
-                            <TextField
-                                style={{ margin: "20px", display: "flex" }}
-                                id="name"
-                                label="Image Name"
-                                variant="outlined"
-                                value={this.state.imageName}
-                                onChange={this.handleNameChange}
-                                disabled={this.state.imageStatus != "complete"}
-                            />
                             <TextField
                                 style={{ margin: "20px", display: "flex" }}
                                 id="phrase"

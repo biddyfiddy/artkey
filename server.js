@@ -12,8 +12,7 @@ const port = process.env.PORT || 3001;
 const http = require("http");
 const contract = require("./src/assets/contract.json");
 
-//app.use(express.static(path.join(__dirname, 'build')));
-//app.use(bodyParser.text());
+app.use(express.static(path.join(__dirname, 'build')));
 app.use(express.json());
 
 const web3Instance = new web3(process.env.MAINNET_RPC_URL);
