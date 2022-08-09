@@ -3,18 +3,32 @@ const sqs = require("./src/aws/sqs");
 const s3 = require("./src/aws/s3");
 const ddb = require("./src/aws/dynamo");
 const path = require("path")
+const bodyParser = require("body-parser")
+
+
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'build')));
+app.use(bodyParser.text());
 
-app.post("/complete", async (req, res) => {
-    const body = req.body;
-    console.log(body);
-    // read message and send to websocket
-    // todo verify signature
+//app.use(express.json());
+app.post('/complete', async function(req,res){
+    console.log(req.body);
+    console.log(req.body.Token);
+    return res.status(200);
+})
+
+
+
+//app.use(express.static(path.join(__dirname, 'build')));
+/*app.post("/complete", async (req, res) => {
+    console.log(req.body);
+    res.end();
+})*/
+/*app.post("/complete", async (req, res) => {
+        console.log(req)
+        console.log(JSON.parse(req.body));*/
 /*
 
     const s3Object = body['Records'][0]['s3']
@@ -31,10 +45,10 @@ app.post("/complete", async (req, res) => {
     });
 */
 
-    res.status(200).send("Job Complete")
-});
+/*    res.status(200).send("Job Complete")
+});*/
 
-app.post("/situation/", async (req, res) => {
+/*app.post("/situation/", async (req, res) => {
     let walletAddress = req.params.walletAddress;
     let getSituationPromise = ddb.getSituationFromWallet(walletAddress);
     let situation;
@@ -48,7 +62,7 @@ app.post("/situation/", async (req, res) => {
     });
 
     if (situation && situation.imageKey) {
-        /* Get yerl from s3 key */
+        /!* Get yerl from s3 key *!/
         let url = await s3.getObjectUrl(situation.imageKey, "image.png");
         situation.imageKey = url;
     }
@@ -76,7 +90,7 @@ app.post("/msg/", async (req, res) => {
 
 
 
-    /*
+    /!*
     let wallets;
     let getAllPromise = ddb.getWhiteListedWalletsPromise();
     await getAllPromise.then(function (data) {
@@ -113,8 +127,8 @@ app.post("/msg/", async (req, res) => {
       },
       "https://sqs.us-east-1.amazonaws.com/810159986268/slime-queue"
     );
-    res.send("");*/
-});
+    res.send("");*!/
+});*/
 
 /*const wsServer = new ws.Server({server});
 wsServer.on("connection", (socket, req) => {
