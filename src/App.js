@@ -39,7 +39,7 @@ class App extends React.Component {
             })
 
 
-            const client = new W3CWebSocket("ws://artkey.onrender.com/?walletAddress=" + accounts[0]);
+            const client = new W3CWebSocket("wss://artkey.onrender.com/?walletAddress=" + accounts[0]);
             client.onmessage = (message) => {
                 console.log(message);
                 const data = JSON.parse(message.data)
