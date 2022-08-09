@@ -10,7 +10,7 @@ const s3 = new AWS.S3({
 
 exports.getObjectUrl = function (key, file) {
   var params = {
-    Bucket: "the-best-buckey",
+    Bucket: "artkey",
     Key: key,
   };
 

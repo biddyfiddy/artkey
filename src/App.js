@@ -11,6 +11,7 @@ import Divider from "@mui/material/Divider";
 import InfoIcon from "@mui/icons-material/Info";
 import ReactTooltip from "react-tooltip";
 import {BigNumber, ethers} from "ethers"
+import { w3cwebsocket as W3CWebSocket } from "websocket";
 
 class App extends React.Component {
     constructor(props) {
@@ -38,6 +39,17 @@ class App extends React.Component {
             this.setState({
                 accounts: accounts,
             })
+
+
+            const client = new W3CWebSocket("ws://artkey.onrender.com/?walletAddress=" + accounts[0]);
+            client.onmessage = (message) => {
+                console.log(message);
+                const data = JSON.parse(message.data)
+                this.setState({
+                    imageKey: data.imageKey,
+                    imageStatus: "complete"
+                })
+            };
         }
     }
 
