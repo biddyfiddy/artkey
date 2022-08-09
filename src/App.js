@@ -22,7 +22,6 @@ class App extends React.Component {
             imageKey: "",
             imageStatus: "complete",
         };
-        this.handleNameChange = this.handleNameChange.bind(this);
         this.handlePhraseChange = this.handlePhraseChange.bind(this);
     }
 

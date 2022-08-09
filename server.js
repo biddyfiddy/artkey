@@ -5,7 +5,6 @@ const ddb = require("./src/aws/dynamo");
 const path = require("path")
 const ws = require("ws")
 const web3 = require("web3")
-const bodyParser = require("body-parser")
 const crypto = require("crypto");
 const app = express();
 const port = process.env.PORT || 3001;
