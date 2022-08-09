@@ -10,9 +10,11 @@ const app = express();
 const port = process.env.PORT || 3001;
 const http = require("http");
 const contract = require("./src/assets/contract.json");
+const bodyParser = require("body-parser")
 
 app.use(express.static(path.join(__dirname, 'build')));
 app.use(express.json());
+app.use(bodyParser.text());
 
 const web3Instance = new web3(process.env.MAINNET_RPC_URL);
 
@@ -61,7 +63,13 @@ const signing = (address, tokenUri) => {
 app.post('/complete', async function(req,res){
     // TODO: verify signature
     // TODO: error check
-    const body = req.body;
+    const body = JSON.parse(req.body);
+    if (!body || !body["Message"]) {
+        console.log("Body not read")
+        res.status(500).json({ message: "Could not read body"});
+        return;
+    }
+
     const message = JSON.parse(body["Message"]);
     // assume 1 record
     const record = message["Records"][0];
