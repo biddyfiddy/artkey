@@ -81,7 +81,7 @@ class App extends React.Component {
     }
 
     async mint() {
-        const { accounts, imageKey } = this.state;
+        const { accounts, imageKey, imagePhrase } = this.state;
 
         if (!accounts || accounts.length === 0) {
             return;
@@ -93,6 +93,7 @@ class App extends React.Component {
             body: JSON.stringify({
                 walletAddress: accounts[0],
                 uri: imageKey,
+                imagePhrase: imagePhrase,
             }),
         }).catch(err => {
 

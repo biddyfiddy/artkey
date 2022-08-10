@@ -104,7 +104,7 @@ app.post("/mint", async (req, res) => {
         return;
     }
 
-    if (!body.walletAddress || !body.uri) {
+    if (!body.walletAddress || !body.uri || !body.imagePhrase) {
         return res.status(500).json("Request was malformed")
     }
 
@@ -122,14 +122,17 @@ app.post("/mint", async (req, res) => {
             const nftstorage = new nftStorage.NFTStorage({ token: NFT_STORAGE_API_KEY })
             const content = await fs.promises.readFile("file.png")
             const image = new nftStorage.File([content], "image.png", { type : "image/jpeg" })
-            const name = "name";
-            const description = "description";
+            const name = body.imagePhrase;
+            const description = "ArtKey Generated NFT";
 
             let resp = await nftstorage.store({
                     image,
                     name,
                     description,
-
+                    attributes: [ {
+                        "trait_type": "Series",
+                        "value": "Genesis"
+                    }]
                 }).catch(err => {console.log(err)});
 
             fs.unlinkSync("file.png")
