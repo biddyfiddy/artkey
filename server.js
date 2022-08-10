@@ -63,6 +63,12 @@ const signing = (address, tokenUri) => {
 app.post('/complete', async function(req,res){
     // TODO: verify signature
     // TODO: error check
+    if (!req.body) {
+        console.log("No body");
+        console.log(req);
+        return;
+    }
+
     const body = JSON.parse(req.body);
     if (!body || !body["Message"]) {
         console.log("Body not read")
