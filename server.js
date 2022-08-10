@@ -5,12 +5,15 @@ const ddb = require("./src/aws/dynamo");
 const path = require("path")
 const ws = require("ws")
 const web3 = require("web3")
+const axios = require("axios")
 const crypto = require("crypto");
 const app = express();
 const port = process.env.PORT || 3001;
 const http = require("http");
 const contract = require("./src/assets/contract.json");
 const bodyParser = require("body-parser")
+const fs = require('fs');
+const nftStorage = require('nft.storage')
 
 app.use(express.static(path.join(__dirname, 'build')));
 app.use(express.json());
@@ -64,14 +67,12 @@ app.post('/complete', async function(req,res){
     // TODO: verify signature
     // TODO: error check
     if (!req.body) {
-        console.log("No body");
-        console.log(req);
+        res.status(500).json({ message: "Could not read body"});
         return;
     }
 
     const body = JSON.parse(req.body);
     if (!body || !body["Message"]) {
-        console.log("Body not read")
         res.status(500).json({ message: "Could not read body"});
         return;
     }
@@ -87,7 +88,6 @@ app.post('/complete', async function(req,res){
 
     console.log(JSON.stringify({walletAddress: walletAddress, imageKey: url}))
     wsServer.clients.forEach(function each(client) {
-        console.log(walletAddress)
         if (client.id === walletAddress) {
             client.send(JSON.stringify({walletAddress: walletAddress, imageKey: url}))
         }
@@ -104,12 +104,44 @@ app.post("/mint", async (req, res) => {
         return;
     }
 
-    if (!body.walletAddress) {
+    if (!body.walletAddress || !body.uri) {
         return res.status(500).json("Request was malformed")
     }
 
-    let sign = signing(body.walletAddress.toLowerCase(), "");
-    res.status(200).json(sign);
+    // push image
+    const file = fs.createWriteStream("file.png");
+
+    await axios.get(body.uri, { responseType: 'stream' }).then(response => {
+        response.data.pipe(file);
+
+        // after download completed close filestream
+        file.on("finish", async () => {
+            file.close();
+            console.log("Download Completed");
+
+            const nftstorage = new nftStorage.NFTStorage({ token: NFT_STORAGE_API_KEY })
+            const content = await fs.promises.readFile("file.png")
+            const image = new nftStorage.File([content], "image.png", { type : "image/jpeg" })
+            const name = "name";
+            const description = "description";
+
+            let resp = await nftstorage.store({
+                    image,
+                    name,
+                    description,
+
+                }).catch(err => {console.log(err)});
+
+            fs.unlinkSync("file.png")
+            console.log(resp.url);
+            let sign = signing(body.walletAddress.toLowerCase(), resp.url);
+            res.status(200).json(sign);
+
+        });
+    }).catch(err => {
+        console.log(err);
+        res.status(500).json({ "message" : "failed to mint"})
+    });
 });
 
 app.post("/msg/", async (req, res) => {

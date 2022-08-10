@@ -12,6 +12,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import ReactTooltip from "react-tooltip";
 import {BigNumber, ethers} from "ethers"
 import { w3cwebsocket as W3CWebSocket } from "websocket";
+import { abi, address, bytecode }  from  "../src/assets/contract.json"
 
 class App extends React.Component {
     constructor(props) {
@@ -23,6 +24,7 @@ class App extends React.Component {
             imageStatus: "complete",
         };
         this.handlePhraseChange = this.handlePhraseChange.bind(this);
+        this.mint = this.mint.bind(this);
     }
 
     async componentDidMount() {
@@ -76,6 +78,75 @@ class App extends React.Component {
         }).catch(err => {
 
         });
+    }
+
+    async mint() {
+        const { accounts, imageKey } = this.state;
+
+        if (!accounts || accounts.length === 0) {
+            return;
+        }
+
+        let response = await fetch(`mint`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                walletAddress: accounts[0],
+                uri: imageKey,
+            }),
+        }).catch(err => {
+
+        });
+
+        if (!response || response.status !== 200) {
+            let reason = await response.json();
+            return;
+        }
+
+        const ethersProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+        const signer = ethersProvider.getSigner();
+
+        let json = await response.json();
+        let rshoePcontractFactory = new ethers.ContractFactory(
+            abi,
+            bytecode,
+            signer,
+        );
+
+        let contractInstance = rshoePcontractFactory.attach(address);
+
+        let rawTxn = await contractInstance.populateTransaction.publicMint(json.tokenUri, json.nonce, json.hash, json.signature, {
+            value: BigNumber.from("20000000000000000")
+        }).catch(err => {
+
+        });
+
+        if (!rawTxn) {
+            return;
+        }
+
+        let signedTxn = await signer.sendTransaction(rawTxn).catch(err => {
+
+        });
+
+        if (!signedTxn) {
+            return;
+        }
+
+        let hashes = await signedTxn.wait().then(reciept => {
+            if (reciept) {
+                return 'https://etherscan.io/tx/' + signedTxn.hash;
+            } else {
+
+
+            }
+        }).catch(err => {
+
+
+        });
+
+
+
     }
 
     async connectMetamask() {
@@ -148,11 +219,14 @@ class App extends React.Component {
                                 <Card variant="outlined" sx={{ width: 250, height: 250, justifyContent: "center",  display: "flex",
                                     flexDirection: "column" }}><CardMedia>Your art will appear here</CardMedia></Card> :
                                 this.state.imageStatus != "complete" ? (
+                                        <Card variant="outlined" sx={{ width: 250, height: 250, justifyContent: "center",  display: "flex",
+                                            flexDirection: "column" }}>
                                     <CircularProgress
-                                        style={{ height: 100, width: 100, padding: "50px" }}
+                                        style={{ height: 100, width: 100, margin: "auto" }}
                                     />
+                                        </Card>
                                 ) : (
-                                    <Card variant="outlined" sx={{ width: 256 }}>
+                                    <Card variant="outlined" sx={{ height: 256, width: 256 }}>
                                         <CardMedia
                                             component="img"
                                             height="256"
@@ -160,17 +234,17 @@ class App extends React.Component {
                                         />
                                     </Card>
                                 )
-
                             }
-
-
                         </Box>
+                        {!this.state.imageKey ?
+                            <Box style={{ marginTop: "10px"}}>Your art will appear here</Box> : <Box />
+                        }
                         <Box>
                             <Button
                                 style={{ marginTop: "100px" }}
                                 id="mint"
                                 variant="contained"
-                                disabled
+                                onClick={() => this.mint()}
                             >
                                 Mint
                             </Button>
