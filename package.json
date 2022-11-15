@@ -19,6 +19,7 @@
     "mjml": "^4.11.0",
     "mailgun.js": "^4.1.6",
     "nft.storage": "7.0.0",
+    "openai": "3.1.0",
     "react": "^17.0.2",
     "react-loading-dot": "1.0.6",
     "react-bootstrap": "^2.1.0",
@@ -28,7 +29,7 @@
     "react-redux": "^7.2.6",
     "react-tooltip": "^4.2.21",
     "webpack": "4.44.2",
-    "web3": "1.7.4",
+    "web3": "1.8.1",
     "ws": "8.8.1",
     "websocket": "^1.0.34"
   },

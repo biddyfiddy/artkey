@@ -8,7 +8,9 @@
 
 .controls {
     margin: 10px;
-    max-width: 300px;
+    max-width: 400px;
+    display: inline-block;
+    text-align: left;
 }
 
 .bold {
@@ -18,6 +20,10 @@
 .image {
     display: flex;
     justify-content: center;
+}
+
+.blur {
+    filter: blur(10px);
 }
 
 .spinner {

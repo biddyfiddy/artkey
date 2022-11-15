@@ -4,6 +4,7 @@ import { TextField, Button } from "@mui/material";
 import Box from "@mui/material/Box";
 import CardMedia from "@mui/material/CardMedia";
 import Card from "@mui/material/Card";
+import Modal from '@mui/material/Modal';
 import Grid from "@mui/material/Grid";
 import { Typography } from "@mui/material";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -11,8 +12,24 @@ import Divider from "@mui/material/Divider";
 import InfoIcon from "@mui/icons-material/Info";
 import ReactTooltip from "react-tooltip";
 import {BigNumber, ethers} from "ethers"
-import { w3cwebsocket as W3CWebSocket } from "websocket";
 import { abi, address, bytecode }  from  "../src/assets/contract.json"
+import CloseIcon from '@mui/icons-material/Close';
+import LinearProgress from '@mui/material/LinearProgress';
+
+const modalStyle = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '500px',
+    height: '200px',
+    textAlign: "center",
+    outline: 0,
+    borderRadius: "10px",
+    boxShadow: "lightgray 0px 0px 20px 0px",
+    backgroundColor: 'white',
+    color: 'black'
+};
 
 class App extends React.Component {
     constructor(props) {
@@ -22,9 +39,13 @@ class App extends React.Component {
             imagePhrase: "",
             imageKey: "",
             imageStatus: "complete",
+            minting: false,
+            hashes: undefined,
+            mintModalOpen: false,
         };
         this.handlePhraseChange = this.handlePhraseChange.bind(this);
         this.mint = this.mint.bind(this);
+        this.handleClose = this.handleClose.bind(this);
     }
 
     async componentDidMount() {
@@ -36,21 +57,30 @@ class App extends React.Component {
                 console.error(error);
             });
 
+            if (!accounts || accounts.length === 0) {
+                return;
+            }
+
             this.setState({
                 accounts: accounts,
             })
-
-
-            const client = new W3CWebSocket("wss://artkey.onrender.com/?walletAddress=" + accounts[0]);
-            client.onmessage = (message) => {
-                console.log(message);
-                const data = JSON.parse(message.data)
-                this.setState({
-                    imageKey: data.imageKey,
-                    imageStatus: "complete"
-                })
-            };
         }
+    }
+
+    handleClose() {
+        this.setState({
+            mintModalOpen: false,
+            minting: false,
+            imagePhrase: "",
+            imageKey: "",
+            imageStatus: "complete",
+        });
+    }
+
+    handleOpen() {
+        this.setState({
+            mintModalOpen: true
+        });
     }
 
     async submitJob() {
@@ -64,8 +94,7 @@ class App extends React.Component {
             imageStatus: "pending",
         });
 
-
-        await fetch(`msg/`, {
+        fetch(`msg/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -73,8 +102,12 @@ class App extends React.Component {
                 imageName: accounts[0] + "_" + Date.now().toString(),
                 imagePhrase: imagePhrase,
             }),
-        }).then(response => {
-
+        }).then(async response => {
+            const json = await response.json()
+            this.setState({
+                imageKey : json.url,
+                imageStatus: "complete"
+            });
         }).catch(err => {
 
         });
@@ -86,6 +119,10 @@ class App extends React.Component {
         if (!accounts || accounts.length === 0) {
             return;
         }
+
+        this.setState({
+          minting: true
+        });
 
         let response = await fetch(`mint`, {
             method: "POST",
@@ -101,6 +138,9 @@ class App extends React.Component {
 
         if (!response || response.status !== 200) {
             let reason = await response.json();
+            this.setState({
+                minting: false
+            });
             return;
         }
 
@@ -117,12 +157,15 @@ class App extends React.Component {
         let contractInstance = rshoePcontractFactory.attach(address);
 
         let rawTxn = await contractInstance.populateTransaction.publicMint(json.tokenUri, json.nonce, json.hash, json.signature, {
-            value: BigNumber.from("20000000000000000")
+            value: BigNumber.from("200000000000000")
         }).catch(err => {
 
         });
 
         if (!rawTxn) {
+            this.setState({
+                minting: false
+            });
             return;
         }
 
@@ -131,6 +174,9 @@ class App extends React.Component {
         });
 
         if (!signedTxn) {
+            this.setState({
+                minting: false
+            });
             return;
         }
 
@@ -146,8 +192,12 @@ class App extends React.Component {
 
         });
 
-
-
+        this.setState({
+            minting: false,
+            hashes: hashes
+        });
+        this.handleOpen();
+        return;
     }
 
     async connectMetamask() {
@@ -163,7 +213,7 @@ class App extends React.Component {
     }
 
     render() {
-        const { accounts } = this.state;
+        const { accounts, imageKey, imageStatus, imagePhrase, minting, mintModalOpen, hashes } = this.state;
 
         if (!accounts || accounts.length === 0) {
             return <Button variant="contained" onClick={() => this.connectMetamask()} style={{ margin: 100 }}>Connect MetaMask</Button>
@@ -181,7 +231,7 @@ class App extends React.Component {
                     A text-to-art generation tool
                 </Typography>
                 <Grid container spacing={2} style={{ textAlign: "center" }}>
-                    <Grid item xs={4}>
+                    <Grid item xs={5} justify="flex-end">
                         <Box className="controls">
                             <Typography variant="subtitle2" style={{ textAlign: "left" }}>
                                 ArtKey allows users to generate art into NFTs with a simple
@@ -193,16 +243,16 @@ class App extends React.Component {
                                 id="phrase"
                                 label="Image Phrase"
                                 variant="outlined"
-                                value={this.state.imagePhrase}
+                                value={imagePhrase}
                                 onChange={this.handlePhraseChange}
-                                disabled={this.state.imageStatus != "complete"}
+                                disabled={imageStatus !== "complete"}
                             />
                             <Button
                                 style={{ margin: "20px", display: "flex", float: "right" }}
                                 id="submit"
                                 variant="contained"
                                 onClick={() => this.submitJob()}
-                                disabled={this.state.imageStatus != "complete"}
+                                disabled={imageStatus !== "complete"}
                             >
                                 Submit
                             </Button>
@@ -213,38 +263,42 @@ class App extends React.Component {
                         flexItem
                         style={{ marginRight: "-1px" }}
                     />
-                    <Grid item xs={8}>
+                    <Grid item xs={7}>
                         <Box className="image">
-                            { !this.state.imageStatus  || this.state.imageStatus == '' ?
+                            { !imageStatus  || imageStatus === '' ?
 
                                 <Card variant="outlined" sx={{ width: 250, height: 250, justifyContent: "center",  display: "flex",
                                     flexDirection: "column" }}><CardMedia>Your art will appear here</CardMedia></Card> :
-                                this.state.imageStatus != "complete" ? (
-                                        <Card variant="outlined" sx={{ width: 250, height: 250, justifyContent: "center",  display: "flex",
+                                imageStatus !== "complete" ? (
+                                        <Card variant="outlined" sx={{ width: 512, height: 512, justifyContent: "center",  display: "flex",
                                             flexDirection: "column" }}>
                                     <CircularProgress
                                         style={{ height: 100, width: 100, margin: "auto" }}
                                     />
                                         </Card>
                                 ) : (
-                                    <Card variant="outlined" sx={{ height: 256, width: 256 }}>
+                                    <Card variant="outlined" sx={{ height: 512, width: 512}}>
                                         <CardMedia
+                                            className={`${minting ? "blur" : ""}`}
                                             component="img"
-                                            height="256"
-                                            image={this.state.imageKey}
-                                        />
+                                            height="512"
+                                            image={imageKey}
+                                        >
+                                        </CardMedia>
                                     </Card>
                                 )
                             }
                         </Box>
+                        {minting ? <Box sx={{ display: "inline-block", textAlign: "center", width: 512}}> <LinearProgress/> </Box>: <Box/>}
                         {!this.state.imageKey ?
                             <Box style={{ marginTop: "10px"}}>Your art will appear here</Box> : <Box />
                         }
                         <Box>
                             <Button
-                                style={{ marginTop: "100px" }}
+                                style={{ marginTop: "10px" }}
                                 id="mint"
                                 variant="contained"
+                                disabled={minting}
                                 onClick={() => this.mint()}
                             >
                                 Mint
@@ -261,6 +315,23 @@ class App extends React.Component {
                         </Box>
                     </Grid>
                 </Grid>
+                <Modal
+                    open={mintModalOpen}
+                    onClose={this.handleClose}
+                    aria-labelledby="modal-modal-title"
+                    aria-describedby="modal-modal-description"
+                >
+                    <Box style={modalStyle}>
+                        <div style={{padding: '20px'}}>
+                            <Typography style={{fontFamily: 'Montserrat', display: 'inline'}} id="modal-modal-title"
+                                        variant="h6" component="h2">
+                                <p>You have successfully generated an ArtKey NFT</p>
+                                <a href={hashes}>View on Etherscan</a>
+                            </Typography>
+                            <CloseIcon style={{float: 'right'}} onClick={this.handleClose}></CloseIcon>
+                        </div>
+                    </Box>
+                </Modal>
             </Box>
         );
     }

@@ -1,9 +1,5 @@
 const express = require("express");
-const sqs = require("./src/aws/sqs");
-const s3 = require("./src/aws/s3");
-const ddb = require("./src/aws/dynamo");
 const path = require("path")
-const ws = require("ws")
 const web3 = require("web3")
 const axios = require("axios")
 const crypto = require("crypto");
@@ -63,38 +59,6 @@ const signing = (address, tokenUri) => {
     };
 }
 
-app.post('/complete', async function(req,res){
-    // TODO: verify signature
-    // TODO: error check
-    if (!req.body) {
-        res.status(500).json({ message: "Could not read body"});
-        return;
-    }
-
-    const body = JSON.parse(req.body);
-    if (!body || !body["Message"]) {
-        res.status(500).json({ message: "Could not read body"});
-        return;
-    }
-
-    const message = JSON.parse(body["Message"]);
-    // assume 1 record
-    const record = message["Records"][0];
-    const s3Object = record['s3']
-    const objectKey = s3Object['object']['key']
-    const url = await s3.getObjectUrl(objectKey, "image.png");
-    const split = objectKey.split("/")
-    const walletAddress = split[1]
-
-    console.log(JSON.stringify({walletAddress: walletAddress, imageKey: url}))
-    wsServer.clients.forEach(function each(client) {
-        if (client.id === walletAddress) {
-            client.send(JSON.stringify({walletAddress: walletAddress, imageKey: url}))
-        }
-    });
-    res.status(200).send("Job Complete")
-})
-
 app.post("/mint", async (req, res) => {
     const body = req.body
     if (!body) {
@@ -139,7 +103,6 @@ app.post("/mint", async (req, res) => {
             console.log(resp.url);
             let sign = signing(body.walletAddress.toLowerCase(), resp.url);
             res.status(200).json(sign);
-
         });
     }).catch(err => {
         console.log(err);
@@ -147,39 +110,32 @@ app.post("/mint", async (req, res) => {
     });
 });
 
-app.post("/msg/", async (req, res) => {
+app.post("/msg", async (req, res) => {
     const body = req.body
 
     if (!body || !body.imageName || !body.imagePhrase || !body.address ) {
         return res.status(500).json("Request was malformed")
     }
 
-    let response = await sqs.sendMsg(
-        {
-            imageName: body.imageName,
-            imagePhrase: body.imagePhrase,
-            walletAddress: body.address,
-        },
-        "https://sqs.us-east-1.amazonaws.com/046096408513/slime-queue"
-    ).then(response => {
-        console.log(response);
+   await axios.post("https://api.openai.com/v1/images/generations", {
+        "prompt" : body.imagePhrase,
+        "n": 1,
+        "size": "1024x1024"
+    }, {
+        headers : {
+            "Content-Type" : "application/json",
+            "Authorization" : `Bearer ${process.env.DALLE_KEY}`,
+        }
+    }).then(response => {
+        console.log(response.data.data[0])
+
+        res.status(200).json({
+            "url" : response.data.data[0].url
+        })
     });
 
-    console.log(response);
-    res.send("");
+//    res.status(200).json({ url : "https://oaidalleapiprodscus.blob.core.windows.net/private/org-7AQD1XyulZT8RpG1XuAYnGHe/user-z7qCChpkj92DmuY1xoVNXSuj/img-KFURWaZA87NQHC3WW3vQKk26.png?st=2022-11-15T02%3A06%3A03Z&se=2022-11-15T04%3A06%3A03Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2022-11-15T03%3A06%3A03Z&ske=2022-11-16T03%3A06%3A03Z&sks=b&skv=2021-08-06&sig=wi9aDP7%2B8TnIyM7YiazYjdmTWubc/jQxqN5UVeayJZI%3D"})
 });
 
 const server = http.createServer({}, app);
-const wsServer = new ws.Server({server});
-wsServer.on("connection", (socket, req) => {
-    console.log("Connection started")
-    // Clean this shit up
-    const url = req.url
-    const split = url.split("?")
-    const entry = split[1].split("=")
-    // Give client the id of the wallet
-    socket.id = entry[1]
-    console.log(socket.id + " opened.")
-});
-
 server.listen(port, () => console.log(`Example app listening on port ${port}!`));
